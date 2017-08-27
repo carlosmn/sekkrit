@@ -1,0 +1,11 @@
+[package]
+name = "sekkrit"
+version = "0.1.0"
+authors = ["Carlos Martín Nieto <cmn@dwim.me>"]
+
+[dependencies]
+opvault = { path = "../opvault-rs" }
+
+[dependencies.gtk]
+version = "0.2.0"
+features = ["v3_10"]
