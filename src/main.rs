@@ -10,6 +10,13 @@ fn main() {
         return;
     }
 
+    let unlock_window = create_unlock_window();
+    unlock_window.show_all();
+
+    gtk::main();
+}
+
+fn create_unlock_window() -> Window {
     let window = Window::new(WindowType::Toplevel);
     window.set_title("Sekkrit");
     window.set_default_size(350, 70);
@@ -43,7 +50,6 @@ fn main() {
 
     let button = Button::new_with_label("Unlock");
     vbox.add(&button);
-    window.show_all();
 
     window.connect_delete_event(|_, _| {
         gtk::main_quit();
@@ -76,5 +82,5 @@ fn main() {
         }
     });
 
-    gtk::main();
+    window
 }
