@@ -1,5 +1,6 @@
 extern crate gtk;
 extern crate opvault;
+extern crate serde_json;
 
 use gtk::prelude::*;
 use gtk::{Button, Window, WindowType, Box, Entry, Orientation, FileChooserDialog, FileChooserAction};
@@ -73,14 +74,52 @@ fn create_unlock_window() -> Window {
         };
 
         window_clone.destroy();
-
         let vault = lv.unlock(pw.as_bytes()).unwrap();
-        for item in vault.get_items() {
-            if let Ok(bin) = item.overview() {
-                println!("{}", String::from_utf8_lossy(bin.as_slice()));
-            }
-        }
+        let main_window = create_main_window(vault);
+        main_window.show_all();
+
     });
 
     window
+}
+
+fn create_main_window(vault: opvault::UnlockedVault) -> Window {
+    let w = Window::new(WindowType::Toplevel);
+    w.set_title("Sekkrit");
+    w.set_default_size(350, 350);
+
+    w.connect_delete_event(|_, _| {
+        gtk::main_quit();
+        Inhibit(false)
+    });
+
+    let store = gtk::ListStore::new(&[gtk::Type::String]);
+
+    let tv = gtk::ListBox::new();
+    for item in vault.get_items() {
+        if let Ok(bin) = item.overview() {
+            let over_value: serde_json::Value = match serde_json::from_slice(bin.as_slice()) {
+                Ok(o) => o,
+                Err(_) => continue,
+            };
+
+            let over = if let Some(obj) = over_value.as_object() {
+                obj
+            } else {
+                continue
+            };
+
+            if let Some(title_value) = over.get("title") {
+                if let Some(title) = title_value.as_str() {
+                    let label = gtk::Label::new_with_mnemonic(None);
+                    label.set_label(title);
+                    tv.insert(&label, -1);
+                }
+            }
+        }
+    }
+    w.add(&tv);
+
+
+    w
 }
