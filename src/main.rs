@@ -30,11 +30,9 @@ fn create_unlock_window() -> Window {
     };
 
     let key_file= glib::KeyFile::new();
-    let res = key_file.load_from_file(cache_path.as_path(), glib::KeyFileFlags::empty());
-    match res {
-        Ok(p) => println!("found it at {:?}", p),
-        Err(e) => println!("error {:?}", e.description()),
-    };
+    if let Err(e) = key_file.load_from_file(cache_path.as_path(), glib::KeyFileFlags::empty()) {
+        println!("found no cache file: {}", e.description());
+    }
     let preselected_vault = key_file.get_string("vault", "last").ok();
 
     let window = Window::new(WindowType::Toplevel);
@@ -95,7 +93,9 @@ fn create_unlock_window() -> Window {
             ""
         };
         key_file.set_string("vault", "last", p);
-        key_file.save_to_file(&cache_path);
+        if let Err(e) = key_file.save_to_file(&cache_path) {
+            println!("failed to save cache: {}", e.description());
+        };
 
         window_clone.destroy();
         let vault = lv.unlock(pw.as_bytes()).unwrap();
@@ -125,8 +125,10 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
     column.add_attribute(&cell, "text", 0);
     folder_tree.set_headers_visible(false);
     folder_tree.append_column(&column);
+
     let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 
+    folder_model.insert_with_values(None, &[0], &[&String::from("All")]);
     for (_uuid, folder) in &vault.folders {
         let overview = if let Ok(o) = folder.overview() {
             o
@@ -154,14 +156,20 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
     folder_tree.connect_cursor_changed(move |tree_view| {
         let selection = tree_view.get_selection();
         if let Some((model, iter)) = selection.get_selected() {
-            let title = model.get_value(&iter, 0).get::<String>();
-            println!("title {:?}", title);
+            let _title = model.get_value(&iter, 0).get::<String>();
         }
     });
 
     folder_tree.set_model(Some(&folder_model));
 
-    let tv = gtk::ListBox::new();
+    let item_model = gtk::ListStore::new(&[String::static_type()]);
+    let item_tree = gtk::TreeView::new();
+    let column = gtk::TreeViewColumn::new();
+    let cell = gtk::CellRendererText::new();
+    column.pack_start(&cell, true);
+    column.add_attribute(&cell, "text", 0);
+    item_tree.set_headers_visible(false);
+    item_tree.append_column(&column);
     for item in vault.get_items() {
         if let Ok(bin) = item.overview() {
             let over_value: serde_json::Value = match serde_json::from_slice(bin.as_slice()) {
@@ -177,16 +185,16 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
 
             if let Some(title_value) = over.get("title") {
                 if let Some(title) = title_value.as_str() {
-                    let label = gtk::Label::new_with_mnemonic(None);
-                    label.set_label(title);
-                    tv.insert(&label, -1);
+                    item_model.insert_with_values(None, &[0], &[&title.clone()]);
                 }
             }
         }
     }
 
+    item_tree.set_model(Some(&item_model));
+
     hbox.add(&folder_tree);
-    hbox.add(&tv);
+    hbox.add(&item_tree);
     w.add(&hbox);
 
     w
