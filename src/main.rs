@@ -93,10 +93,16 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
         Inhibit(false)
     });
 
-    let store = gtk::ListStore::new(&[gtk::Type::String]);
+    let folder_model = gtk::ListStore::new(&[String::static_type()]);
+    let folder_tree = gtk::TreeView::new();
+    let column = gtk::TreeViewColumn::new();
+    let cell = gtk::CellRendererText::new();
+    column.pack_start(&cell, true);
+    column.add_attribute(&cell, "text", 0);
+    folder_tree.set_headers_visible(false);
+    folder_tree.append_column(&column);
     let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 
-    let folderlist = gtk::ListBox::new();
     for (_uuid, folder) in &vault.folders {
         let overview = if let Ok(o) = folder.overview() {
             o
@@ -116,13 +122,20 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
 
         if let Some(title_value) = over.get("title") {
             if let Some(title) = title_value.as_str() {
-                let label = gtk::Label::new_with_mnemonic(None);
-                label.set_label(title);
-                folderlist.insert(&label, -1);
+                folder_model.insert_with_values(None, &[0], &[&title.clone()]);
             }
         }
     }
 
+    folder_tree.connect_cursor_changed(move |tree_view| {
+        let selection = tree_view.get_selection();
+        if let Some((model, iter)) = selection.get_selected() {
+            let title = model.get_value(&iter, 0).get::<String>();
+            println!("title {:?}", title);
+        }
+    });
+
+    folder_tree.set_model(Some(&folder_model));
 
     let tv = gtk::ListBox::new();
     for item in vault.get_items() {
@@ -148,7 +161,7 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
         }
     }
 
-    hbox.add(&folderlist);
+    hbox.add(&folder_tree);
     hbox.add(&tv);
     w.add(&hbox);
 
