@@ -4,9 +4,11 @@ extern crate opvault;
 extern crate serde_json;
 
 use std::error::Error;
+use std::rc::Rc;
 
 use gtk::prelude::*;
 use gtk::{Button, Window, WindowType, Box, Entry, Orientation, FileChooserDialog, FileChooserAction};
+use opvault::Uuid;
 
 fn main() {
     if gtk::init().is_err() {
@@ -108,6 +110,8 @@ fn create_unlock_window() -> Window {
 }
 
 fn create_main_window(vault: opvault::UnlockedVault) -> Window {
+    let vault = Rc::new(vault);
+
     let w = Window::new(WindowType::Toplevel);
     w.set_title("Sekkrit");
     w.set_default_size(350, 350);
@@ -117,7 +121,9 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
         Inhibit(false)
     });
 
-    let folder_model = gtk::ListStore::new(&[String::static_type()]);
+    let item_model = gtk::ListStore::new(&[String::static_type(), String::static_type(), bool::static_type()]);
+    let filter_item_model = gtk::TreeModelFilter::new(&item_model, None);
+    let folder_model = gtk::ListStore::new(&[String::static_type(), String::static_type()]);
     let folder_tree = gtk::TreeView::new();
     let column = gtk::TreeViewColumn::new();
     let cell = gtk::CellRendererText::new();
@@ -148,21 +154,33 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
 
         if let Some(title_value) = over.get("title") {
             if let Some(title) = title_value.as_str() {
-                folder_model.insert_with_values(None, &[0], &[&title.clone()]);
+                folder_model.insert_with_values(None, &[0, 1], &[&title.clone(), &folder.uuid.to_string()]);
             }
         }
     }
 
+    let item_model_clone = item_model.clone();
+    let filter_item_model_clone = filter_item_model.clone();
+    let vault_clone = vault.clone();
     folder_tree.connect_cursor_changed(move |tree_view| {
         let selection = tree_view.get_selection();
         if let Some((model, iter)) = selection.get_selected() {
-            let _title = model.get_value(&iter, 0).get::<String>();
+            let title = model.get_value(&iter, 0).get::<String>().unwrap();
+            let uuid = if title == "All" {
+                None
+            } else {
+                let str_uuid = model.get_value(&iter, 1).get::<String>().unwrap();
+                Uuid::parse_str(&str_uuid).ok()
+            };
+            filter_items(vault_clone.clone(), &item_model_clone, uuid);
+            filter_item_model_clone.refilter();
         }
     });
 
     folder_tree.set_model(Some(&folder_model));
 
-    let item_model = gtk::ListStore::new(&[String::static_type()]);
+    filter_item_model.set_visible_column(2);
+
     let item_tree = gtk::TreeView::new();
     let column = gtk::TreeViewColumn::new();
     let cell = gtk::CellRendererText::new();
@@ -185,17 +203,44 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
 
             if let Some(title_value) = over.get("title") {
                 if let Some(title) = title_value.as_str() {
-                    item_model.insert_with_values(None, &[0], &[&title.clone()]);
+                    item_model.insert_with_values(None, &[0, 1], &[&title.clone(), &item.uuid.to_string()]);
                 }
             }
         }
     }
 
-    item_tree.set_model(Some(&item_model));
+    item_tree.set_model(Some(&filter_item_model));
 
     hbox.add(&folder_tree);
     hbox.add(&item_tree);
     w.add(&hbox);
 
     w
+}
+
+/// Filter down the items in the model to those which have the folder with the given UUID.
+fn filter_items(vault: Rc<opvault::UnlockedVault>, model: &gtk::ListStore, uuid: Option<Uuid>) {
+    let iter = match model.get_iter_first() {
+        Some(i) => i,
+        None => return,
+    };
+
+    let mut has_next = true;
+    while has_next {
+        let item_uuid_str = model.get_value(&iter, 1).get::<String>().unwrap();
+        let item_uuid = Uuid::parse_str(&item_uuid_str).unwrap();
+        let item = vault.get_item(&item_uuid).unwrap();
+        let visible = if let Some(filter) = uuid {
+            if let Some(item_folder_uuid) = item.folder {
+                filter == item_folder_uuid
+            } else {
+                false
+            }
+        } else {
+            true
+        };
+
+        model.set_value(&iter, 2, &visible.to_value());
+        has_next = model.iter_next(&iter);
+    }
 }
