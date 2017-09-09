@@ -94,6 +94,35 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
     });
 
     let store = gtk::ListStore::new(&[gtk::Type::String]);
+    let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+
+    let folderlist = gtk::ListBox::new();
+    for (_uuid, folder) in &vault.folders {
+        let overview = if let Ok(o) = folder.overview() {
+            o
+        } else {
+            continue
+        };
+        let over_value: serde_json::Value = match serde_json::from_slice(&overview) {
+            Ok(o) => o,
+            Err(_) => continue,
+        };
+
+        let over = if let Some(obj) = over_value.as_object() {
+            obj
+        } else {
+            continue
+        };
+
+        if let Some(title_value) = over.get("title") {
+            if let Some(title) = title_value.as_str() {
+                let label = gtk::Label::new_with_mnemonic(None);
+                label.set_label(title);
+                folderlist.insert(&label, -1);
+            }
+        }
+    }
+
 
     let tv = gtk::ListBox::new();
     for item in vault.get_items() {
@@ -118,8 +147,10 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
             }
         }
     }
-    w.add(&tv);
 
+    hbox.add(&folderlist);
+    hbox.add(&tv);
+    w.add(&hbox);
 
     w
 }
