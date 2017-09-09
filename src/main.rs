@@ -1,6 +1,9 @@
 extern crate gtk;
+extern crate glib;
 extern crate opvault;
 extern crate serde_json;
+
+use std::error::Error;
 
 use gtk::prelude::*;
 use gtk::{Button, Window, WindowType, Box, Entry, Orientation, FileChooserDialog, FileChooserAction};
@@ -18,6 +21,22 @@ fn main() {
 }
 
 fn create_unlock_window() -> Window {
+    let cache_path = match glib::get_user_cache_dir() {
+        Some(mut p) => {
+            p.push("sekkrit");
+            p
+        },
+        None => panic!("failed to find user cache dir"),
+    };
+
+    let key_file= glib::KeyFile::new();
+    let res = key_file.load_from_file(cache_path.as_path(), glib::KeyFileFlags::empty());
+    match res {
+        Ok(p) => println!("found it at {:?}", p),
+        Err(e) => println!("error {:?}", e.description()),
+    };
+    let preselected_vault = key_file.get_string("vault", "last").ok();
+
     let window = Window::new(WindowType::Toplevel);
     window.set_title("Sekkrit");
     window.set_default_size(350, 70);
@@ -26,6 +45,9 @@ fn create_unlock_window() -> Window {
     window.add(&vbox);
 
     let path_input = Entry::new();
+    if let Some(vault_path) = preselected_vault {
+        path_input.set_text(&vault_path);
+    }
     vbox.add(&path_input);
 
     let diag_button = Button::new_with_label("Select opvault");
@@ -72,6 +94,8 @@ fn create_unlock_window() -> Window {
         } else {
             ""
         };
+        key_file.set_string("vault", "last", p);
+        key_file.save_to_file(&cache_path);
 
         window_clone.destroy();
         let vault = lv.unlock(pw.as_bytes()).unwrap();

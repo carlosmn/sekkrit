@@ -2,6 +2,7 @@
 name = "sekkrit"
 version = "0.1.0"
 dependencies = [
+ "glib 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "gtk 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "opvault 0.1.0",
  "serde_json 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
