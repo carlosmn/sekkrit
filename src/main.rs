@@ -121,7 +121,7 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
         Inhibit(false)
     });
 
-    let item_model = gtk::ListStore::new(&[String::static_type(), String::static_type(), bool::static_type()]);
+    let item_model = gtk::ListStore::new(&[String::static_type(), String::static_type(), String::static_type(), bool::static_type()]);
     let filter_item_model = gtk::TreeModelFilter::new(&item_model, None);
     let folder_model = gtk::ListStore::new(&[String::static_type(), String::static_type()]);
     let folder_tree = gtk::TreeView::new();
@@ -179,15 +179,23 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
 
     folder_tree.set_model(Some(&folder_model));
 
-    filter_item_model.set_visible_column(2);
+    filter_item_model.set_visible_column(3);
 
     let item_tree = gtk::TreeView::new();
+    item_tree.set_headers_visible(false);
+
+    let column = gtk::TreeViewColumn::new();
+    let cell = gtk::CellRendererPixbuf::new();
+    column.pack_start(&cell, true);
+    column.add_attribute(&cell, "icon-name", 0);
+    item_tree.append_column(&column);
+
     let column = gtk::TreeViewColumn::new();
     let cell = gtk::CellRendererText::new();
     column.pack_start(&cell, true);
-    column.add_attribute(&cell, "text", 0);
-    item_tree.set_headers_visible(false);
+    column.add_attribute(&cell, "text", 1);
     item_tree.append_column(&column);
+
     for item in vault.get_items() {
         if let Ok(bin) = item.overview() {
             let over_value: serde_json::Value = match serde_json::from_slice(bin.as_slice()) {
@@ -203,7 +211,8 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
 
             if let Some(title_value) = over.get("title") {
                 if let Some(title) = title_value.as_str() {
-                    item_model.insert_with_values(None, &[0, 1], &[&title.clone(), &item.uuid.to_string()]);
+                    let stock_id = item_stock_icon(&item);
+                    item_model.insert_with_values(None, &[0, 1, 2],  &[&stock_id.to_string(), &title.clone(), &item.uuid.to_string()]);
                 }
             }
         }
@@ -227,7 +236,7 @@ fn filter_items(vault: Rc<opvault::UnlockedVault>, model: &gtk::ListStore, uuid:
 
     let mut has_next = true;
     while has_next {
-        let item_uuid_str = model.get_value(&iter, 1).get::<String>().unwrap();
+        let item_uuid_str = model.get_value(&iter, 2).get::<String>().unwrap();
         let item_uuid = Uuid::parse_str(&item_uuid_str).unwrap();
         let item = vault.get_item(&item_uuid).unwrap();
         let visible = if let Some(filter) = uuid {
@@ -240,7 +249,15 @@ fn filter_items(vault: Rc<opvault::UnlockedVault>, model: &gtk::ListStore, uuid:
             true
         };
 
-        model.set_value(&iter, 2, &visible.to_value());
+        model.set_value(&iter, 3, &visible.to_value());
         has_next = model.iter_next(&iter);
+    }
+}
+
+fn item_stock_icon(item: &opvault::Item) -> &'static str {
+    use opvault::Category::*;
+    match item.category {
+        Login | Password => "dialog-password",
+        _ => "pda",
     }
 }
