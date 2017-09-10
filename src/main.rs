@@ -1,7 +1,11 @@
 extern crate gtk;
 extern crate glib;
 extern crate opvault;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_json;
+
+mod item;
 
 use std::error::Error;
 use std::rc::Rc;
@@ -220,6 +224,30 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
             }
         }
     }
+
+    let vault_clone = vault.clone();
+    item_tree.connect_cursor_changed(move |tree_view| {
+        let selection = tree_view.get_selection();
+        if let Some((model, iter)) = selection.get_selected() {
+            let uuid_str = model.get_value(&iter, 2).get::<String>().unwrap();
+            let uuid = Uuid::parse_str(&uuid_str).unwrap();
+
+            let item = match vault_clone.get_item(&uuid) {
+                Some(i) => i,
+                None => return,
+            };
+
+            if item.category == opvault::Category::Login {
+                println!("details {:?}", String::from_utf8_lossy(&item.detail().unwrap()));
+                let pass_res = item::Login::from_slice(&item.detail().unwrap());
+                if let Ok(pass) = pass_res {
+                    println!("details {:?}", pass);
+                } else {
+                    println!("err {:?}", pass_res);
+                }
+            }
+        }
+    });
 
     item_tree.set_model(Some(&filter_item_model));
 
