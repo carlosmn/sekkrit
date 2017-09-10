@@ -258,6 +258,10 @@ fn item_stock_icon(item: &opvault::Item) -> &'static str {
     use opvault::Category::*;
     match item.category {
         Login | Password => "dialog-password",
+        Identity => "vcard",
+        Tombstone => "edit-delete",
+        Database => "drive-multidisk",
+        Email => "mail-read",
         _ => "pda",
     }
 }
