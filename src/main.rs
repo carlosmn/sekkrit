@@ -57,13 +57,16 @@ fn create_unlock_window() -> Window {
     diag_button.connect_clicked(move |_| {
         let selector = FileChooserDialog::new::<Window>(
             Some("Select opvault directory"), Some(&window_clone), FileChooserAction::SelectFolder);
-        selector.add_buttons(&[("Open", gtk::ResponseType::Ok.into()), ("Cancel", gtk::ResponseType::Cancel.into())]);
-        selector.run();
+        let ok_response: i32 = gtk::ResponseType::Ok.into();
+        selector.add_buttons(&[("Open", ok_response), ("Cancel", gtk::ResponseType::Cancel.into())]);
+        let res: i32 = selector.run();
+        if res == ok_response {
+            if let Some(file) = selector.get_filename() {
+                input_clone.set_text(&file.to_string_lossy());
+            }
+        }
 
-        let files = selector.get_filenames();
         selector.destroy();
-
-        input_clone.set_text(&*files[0].to_string_lossy());
     });
 
     let pw_input = Entry::new();
