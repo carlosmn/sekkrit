@@ -20,7 +20,7 @@ pub struct LoginField {
     #[serde(rename = "type")]
     type_: String,
     value: String,
-    designation: String,
+    designation: Option<String>,
     name: String,
 }
 
