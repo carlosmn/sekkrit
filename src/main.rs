@@ -238,15 +238,17 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
                 None => return,
             };
 
+            println!("category {:?}", item.category);
+
             if item.category == opvault::Category::Login {
-                println!("details {:?}", String::from_utf8_lossy(&item.detail().unwrap()));
                 let pass_res = item::Login::from_slice(&item.detail().unwrap());
-                if let Ok(pass) = pass_res {
-                    println!("details {:?}", pass);
-                } else {
+                if pass_res.is_err() {
                     println!("err {:?}", pass_res);
                 }
             }
+
+            println!("detail {:?}", String::from_utf8_lossy(&item.detail().unwrap()));
+
         }
     });
 
