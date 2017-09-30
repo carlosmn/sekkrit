@@ -6,8 +6,6 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate serde;
 
-mod item;
-
 use std::error::Error;
 use std::rc::Rc;
 
@@ -205,23 +203,10 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
     item_tree.append_column(&column);
 
     for item in vault.get_items() {
-        if let Ok(bin) = item.overview() {
-            let over_value: serde_json::Value = match serde_json::from_slice(bin.as_slice()) {
-                Ok(o) => o,
-                Err(_) => continue,
-            };
-
-            let over = if let Some(obj) = over_value.as_object() {
-                obj
-            } else {
-                continue
-            };
-
-            if let Some(title_value) = over.get("title") {
-                if let Some(title) = title_value.as_str() {
-                    let stock_id = item_stock_icon(&item);
-                    item_model.insert_with_values(None, &[0, 1, 2],  &[&stock_id.to_string(), &title.clone(), &item.uuid.to_string()]);
-                }
+        if let Ok(overview) = item.overview() {
+            if let Some(title) = overview.title {
+                let stock_id = item_stock_icon(&item);
+                item_model.insert_with_values(None, &[0, 1, 2],  &[&stock_id.to_string(), &title.clone(), &item.uuid.to_string()]);
             }
         }
     }
@@ -239,16 +224,11 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
             };
 
             println!("category {:?}", item.category);
-
-            if item.category == opvault::Category::Login {
-                let pass_res = item::Login::from_slice(&item.detail().unwrap());
-                if pass_res.is_err() {
-                    println!("err {:?}", pass_res);
-                }
-            }
-
-            println!("detail {:?}", String::from_utf8_lossy(&item.detail().unwrap()));
-
+            let detail = match item.detail() {
+                Ok(d) => d,
+                Err(_) => return,
+            };
+            println!("detail {:?}", detail);
         }
     });
 
