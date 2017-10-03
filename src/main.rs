@@ -307,9 +307,18 @@ fn grid_from_details(d: Detail) -> gtk::Grid {
                         name_text.set_text(name);
                         grid.attach(&name_text, 0, n as i32, 1, 1);
 
+                        let hbox = gtk::Box::new(Orientation::Horizontal, 0);
+
                         let value_text = gtk::Entry::new();
-                        value_text.set_text(&"······");
-                        grid.attach(&value_text, 1, n as i32, 1, 1);
+                        value_text.set_text(&"sekkrit");
+                        value_text.set_visibility(false);
+                        hbox.add(&value_text);
+
+                        let copy_button = gtk::Button::new_from_icon_name("edit-copy", gtk::IconSize::Button.into());
+
+                        hbox.add(&copy_button);
+
+                        grid.attach(&hbox, 1, n as i32, 1, 1);
                     },
                     LoginFieldKind::Checkbox | LoginFieldKind::Button => {},
                 };
