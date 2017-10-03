@@ -196,24 +196,11 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
         }
     }
 
-    let details_model = gtk::ListStore::new(&[String::static_type(), String::static_type()]);
-    let details_tree = gtk::TreeView::new();
-    details_tree.set_headers_visible(false);
-
-    let column = gtk::TreeViewColumn::new();
-    let cell = gtk::CellRendererText::new();
-    column.pack_start(&cell, true);
-    column.add_attribute(&cell, "text", 0);
-    details_tree.append_column(&column);
-
-    let column = gtk::TreeViewColumn::new();
-    let cell = gtk::CellRendererText::new();
-    column.pack_start(&cell, true);
-    column.add_attribute(&cell, "text", 1);
-    details_tree.append_column(&column);
+    let details_scrolled = gtk::ScrolledWindow::new(None, None);
+    details_scrolled.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
+    let details_scrolled_clone = details_scrolled.clone();
 
     let vault_clone = vault.clone();
-    let details_clone = details_model.clone();
     item_tree.connect_cursor_changed(move |tree_view| {
         let selection = tree_view.get_selection();
         if let Some((model, iter)) = selection.get_selected() {
@@ -232,35 +219,17 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
             };
             println!("detail {:?}", detail);
 
-            details_clone.clear();
-
-            match detail {
-                Detail::Login(l) => {
-                    for f in l.fields {
-                        match f.kind {
-                            LoginFieldKind::Text | LoginFieldKind::I => {
-                                details_clone.insert_with_values(None, &[0, 1], &[&f.designation.as_ref().unwrap_or(&f.name), &f.value]);
-                            },
-                            LoginFieldKind::Password => {
-                                details_clone.insert_with_values(None, &[0, 1], &[&f.designation.as_ref().unwrap_or(&f.name), &"······"]);
-                            },
-                            LoginFieldKind::Checkbox | LoginFieldKind::Button => {},
-                        };
-                    }
-                }
-                Detail::Generic(g) => {
-                    for s in g.sections {
-                        for _f in s.fields {
-                            // Nothing yet
-                        }
-                    }
-                }
+            for c in details_scrolled_clone.get_children() {
+                details_scrolled_clone.remove(&c);
             }
+
+            let grid = grid_from_details(detail);
+            details_scrolled_clone.add_with_viewport(&grid);
+            details_scrolled_clone.show_all();
         }
     });
 
     item_tree.set_model(Some(&filter_item_model));
-    details_tree.set_model(Some(&details_model));
 
     let scrolled = gtk::ScrolledWindow::new(None, None);
     scrolled.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
@@ -268,7 +237,7 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
 
     hbox.add(&folder_tree);
     hbox.add(&scrolled);
-    hbox.add(&details_tree);
+    hbox.add(&details_scrolled);
     w.add(&hbox);
 
     w
@@ -311,4 +280,49 @@ fn item_stock_icon(item: &opvault::Item) -> &'static str {
         Email => "mail-read",
         _ => "pda",
     }
+}
+
+fn grid_from_details(d: Detail) -> gtk::Grid {
+    let grid = gtk::Grid::new();
+    match d {
+        Detail::Login(l) => {
+            for (n, f) in l.fields.iter().enumerate() {
+                match f.kind {
+                    LoginFieldKind::Text | LoginFieldKind::I => {
+                        let name = f.designation.as_ref().unwrap_or(&f.name);
+                        let value = &f.value;
+
+                        let name_text = gtk::Entry::new();
+                        name_text.set_text(name);
+                        grid.attach(&name_text, 0, n as i32, 1, 1);
+
+                        let value_text = gtk::Entry::new();
+                        value_text.set_text(value);
+                        grid.attach(&value_text, 1, n as i32, 1, 1);
+                    },
+                    LoginFieldKind::Password => {
+                        let name = f.designation.as_ref().unwrap_or(&f.name);
+
+                        let name_text = gtk::Entry::new();
+                        name_text.set_text(name);
+                        grid.attach(&name_text, 0, n as i32, 1, 1);
+
+                        let value_text = gtk::Entry::new();
+                        value_text.set_text(&"······");
+                        grid.attach(&value_text, 1, n as i32, 1, 1);
+                    },
+                    LoginFieldKind::Checkbox | LoginFieldKind::Button => {},
+                };
+            }
+        }
+        Detail::Generic(g) => {
+            for s in g.sections {
+                for _f in s.fields {
+                    // Nothing yet
+                }
+            }
+        }
+    };
+
+    grid
 }
