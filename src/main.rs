@@ -1,4 +1,5 @@
 extern crate gtk;
+extern crate gdk;
 extern crate glib;
 extern crate opvault;
 extern crate serde_json;
@@ -314,7 +315,12 @@ fn grid_from_details(d: Detail) -> gtk::Grid {
                         value_text.set_visibility(false);
                         hbox.add(&value_text);
 
+                        let password = f.value.clone();
                         let copy_button = gtk::Button::new_from_icon_name("edit-copy", gtk::IconSize::Button.into());
+                        copy_button.connect_clicked(move |_button| {
+                            let cp = gtk::Clipboard::get(&gdk::Atom::intern("CLIPBOARD"));
+                            cp.set_text(&password);
+                        });
 
                         hbox.add(&copy_button);
 
