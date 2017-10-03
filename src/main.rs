@@ -1,8 +1,6 @@
 extern crate gtk;
 extern crate glib;
 extern crate opvault;
-#[macro_use]
-extern crate serde_derive;
 extern crate serde_json;
 extern crate serde;
 
@@ -11,7 +9,7 @@ use std::rc::Rc;
 
 use gtk::prelude::*;
 use gtk::{Button, Window, WindowType, Box, Entry, Orientation, FileChooserDialog, FileChooserAction};
-use opvault::Uuid;
+use opvault::{Uuid, Detail, LoginFieldKind};
 
 fn main() {
     if gtk::init().is_err() {
@@ -147,22 +145,9 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
         } else {
             continue
         };
-        let over_value: serde_json::Value = match serde_json::from_slice(&overview) {
-            Ok(o) => o,
-            Err(_) => continue,
-        };
 
-        let over = if let Some(obj) = over_value.as_object() {
-            obj
-        } else {
-            continue
-        };
-
-        if let Some(title_value) = over.get("title") {
-            if let Some(title) = title_value.as_str() {
-                folder_model.insert_with_values(None, &[0, 1], &[&title.clone(), &folder.uuid.to_string()]);
-            }
-        }
+        let title = &overview.title;
+        folder_model.insert_with_values(None, &[0, 1], &[&title.clone(), &folder.uuid.to_string()]);
     }
 
     let item_model_clone = item_model.clone();
@@ -211,7 +196,24 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
         }
     }
 
+    let details_model = gtk::ListStore::new(&[String::static_type(), String::static_type()]);
+    let details_tree = gtk::TreeView::new();
+    details_tree.set_headers_visible(false);
+
+    let column = gtk::TreeViewColumn::new();
+    let cell = gtk::CellRendererText::new();
+    column.pack_start(&cell, true);
+    column.add_attribute(&cell, "text", 0);
+    details_tree.append_column(&column);
+
+    let column = gtk::TreeViewColumn::new();
+    let cell = gtk::CellRendererText::new();
+    column.pack_start(&cell, true);
+    column.add_attribute(&cell, "text", 1);
+    details_tree.append_column(&column);
+
     let vault_clone = vault.clone();
+    let details_clone = details_model.clone();
     item_tree.connect_cursor_changed(move |tree_view| {
         let selection = tree_view.get_selection();
         if let Some((model, iter)) = selection.get_selected() {
@@ -229,13 +231,44 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
                 Err(_) => return,
             };
             println!("detail {:?}", detail);
+
+            details_clone.clear();
+
+            match detail {
+                Detail::Login(l) => {
+                    for f in l.fields {
+                        match f.kind {
+                            LoginFieldKind::Text | LoginFieldKind::I => {
+                                details_clone.insert_with_values(None, &[0, 1], &[&f.designation.as_ref().unwrap_or(&f.name), &f.value]);
+                            },
+                            LoginFieldKind::Password => {
+                                details_clone.insert_with_values(None, &[0, 1], &[&f.designation.as_ref().unwrap_or(&f.name), &"······"]);
+                            },
+                            LoginFieldKind::Checkbox | LoginFieldKind::Button => {},
+                        };
+                    }
+                }
+                Detail::Generic(g) => {
+                    for s in g.sections {
+                        for _f in s.fields {
+                            // Nothing yet
+                        }
+                    }
+                }
+            }
         }
     });
 
     item_tree.set_model(Some(&filter_item_model));
+    details_tree.set_model(Some(&details_model));
+
+    let scrolled = gtk::ScrolledWindow::new(None, None);
+    scrolled.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
+    scrolled.add_with_viewport(&item_tree);
 
     hbox.add(&folder_tree);
-    hbox.add(&item_tree);
+    hbox.add(&scrolled);
+    hbox.add(&details_tree);
     w.add(&hbox);
 
     w
