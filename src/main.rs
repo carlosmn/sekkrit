@@ -289,6 +289,18 @@ fn grid_from_details(d: Detail) -> gtk::Grid {
         Detail::Login(l) => {
             for (n, f) in l.fields.iter().enumerate() {
                 match f.kind {
+                    LoginFieldKind::Password  => {
+                        let name = f.designation.as_ref().unwrap_or(&f.name);
+                        let password = f.value.clone();
+
+                        insert_password(&grid, n as i32, name, password);
+                    },
+                    LoginFieldKind::Text if f.name == "password" => {
+                        let name = f.designation.as_ref().unwrap_or(&f.name);
+                        let password = f.value.clone();
+
+                        insert_password(&grid, n as i32, name, password);
+                    },
                     LoginFieldKind::Text | LoginFieldKind::I => {
                         let name = f.designation.as_ref().unwrap_or(&f.name);
                         let value = &f.value;
@@ -300,31 +312,6 @@ fn grid_from_details(d: Detail) -> gtk::Grid {
                         let value_text = gtk::Entry::new();
                         value_text.set_text(value);
                         grid.attach(&value_text, 1, n as i32, 1, 1);
-                    },
-                    LoginFieldKind::Password => {
-                        let name = f.designation.as_ref().unwrap_or(&f.name);
-
-                        let name_text = gtk::Entry::new();
-                        name_text.set_text(name);
-                        grid.attach(&name_text, 0, n as i32, 1, 1);
-
-                        let hbox = gtk::Box::new(Orientation::Horizontal, 0);
-
-                        let value_text = gtk::Entry::new();
-                        value_text.set_text(&"sekkrit");
-                        value_text.set_visibility(false);
-                        hbox.add(&value_text);
-
-                        let password = f.value.clone();
-                        let copy_button = gtk::Button::new_from_icon_name("edit-copy", gtk::IconSize::Button.into());
-                        copy_button.connect_clicked(move |_button| {
-                            let cp = gtk::Clipboard::get(&gdk::Atom::intern("CLIPBOARD"));
-                            cp.set_text(&password);
-                        });
-
-                        hbox.add(&copy_button);
-
-                        grid.attach(&hbox, 1, n as i32, 1, 1);
                     },
                     LoginFieldKind::Checkbox | LoginFieldKind::Button => {},
                 };
@@ -340,4 +327,27 @@ fn grid_from_details(d: Detail) -> gtk::Grid {
     };
 
     grid
+}
+
+fn insert_password(grid: &gtk::Grid, n: i32, name: &str, password: String) {
+    let name_text = gtk::Entry::new();
+    name_text.set_text(name);
+    grid.attach(&name_text, 0, n as i32, 1, 1);
+
+    let hbox = gtk::Box::new(Orientation::Horizontal, 0);
+
+    let value_text = gtk::Entry::new();
+    value_text.set_text(&"sekkrit");
+    value_text.set_visibility(false);
+    hbox.add(&value_text);
+
+    let copy_button = gtk::Button::new_from_icon_name("edit-copy", gtk::IconSize::Button.into());
+    copy_button.connect_clicked(move |_button| {
+        let cp = gtk::Clipboard::get(&gdk::Atom::intern("CLIPBOARD"));
+        cp.set_text(&password);
+    });
+
+    hbox.add(&copy_button);
+
+    grid.attach(&hbox, 1, n as i32, 1, 1);
 }
