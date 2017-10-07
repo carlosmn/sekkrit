@@ -226,7 +226,17 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
             }
 
             let grid = grid_from_details(detail);
-            details_scrolled_clone.add_with_viewport(&grid);
+            let ebox = gtk::EventBox::new();
+            ebox.add(&grid);
+            let css_rule = b".details_view { background-color: white; }";
+            let css_provider = gtk::CssProvider::new();
+            gtk::CssProviderExt::load_from_data(&css_provider, css_rule).unwrap();
+            if let Some(style_ctx) = ebox.get_style_context() {
+                style_ctx.add_class("details_view");
+                style_ctx.add_provider(&css_provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
+            }
+
+            details_scrolled_clone.add_with_viewport(&ebox);
             details_scrolled_clone.show_all();
         }
     });
@@ -286,17 +296,6 @@ fn item_stock_icon(item: &opvault::Item) -> &'static str {
 
 fn grid_from_details(d: Detail) -> gtk::Grid {
     let grid = gtk::Grid::new();
-
-    let css_rule = b"* { background-color: white; }";
-    let css_provider = gtk::CssProvider::new();
-    gtk::CssProviderExt::load_from_data(&css_provider, css_rule).unwrap();
-    if let Some(style_ctx) = grid.get_style_context() {
-        style_ctx.add_provider(&css_provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
-    }
-
-    // if let Some(style_ctx) = grid.get_style_context() {
-    //     style_ctx.add_provider(&css_provider, gtk::STYLE_PROVIDER_PRIORITY_FALLBACK);
-    // }
 
     match d {
         Detail::Login(l) => {
