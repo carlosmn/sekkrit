@@ -286,6 +286,18 @@ fn item_stock_icon(item: &opvault::Item) -> &'static str {
 
 fn grid_from_details(d: Detail) -> gtk::Grid {
     let grid = gtk::Grid::new();
+
+    let css_rule = b"* { background-color: white; }";
+    let css_provider = gtk::CssProvider::new();
+    gtk::CssProviderExt::load_from_data(&css_provider, css_rule).unwrap();
+    if let Some(style_ctx) = grid.get_style_context() {
+        style_ctx.add_provider(&css_provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
+    }
+
+    // if let Some(style_ctx) = grid.get_style_context() {
+    //     style_ctx.add_provider(&css_provider, gtk::STYLE_PROVIDER_PRIORITY_FALLBACK);
+    // }
+
     match d {
         Detail::Login(l) => {
             for (n, f) in l.fields.iter().enumerate() {
