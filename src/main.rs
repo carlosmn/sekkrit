@@ -218,6 +218,7 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
                 Ok(d) => d,
                 Err(_) => return,
             };
+            println!("overview {:?}", item.overview());
             println!("detail {:?}", detail);
 
             for c in details_scrolled_clone.get_children() {
@@ -305,22 +306,47 @@ fn grid_from_details(d: Detail) -> gtk::Grid {
                         let name = f.designation.as_ref().unwrap_or(&f.name);
                         let value = &f.value;
 
-                        let name_text = gtk::Entry::new();
-                        name_text.set_text(name);
-                        grid.attach(&name_text, 0, n as i32, 1, 1);
+                        let name_box = gtk::EventBox::new();
+                        let name_label = gtk::Label::new(Some(name.as_str()));
+                        name_box.add(&name_label);
+                        grid.attach(&name_box, 0, n as i32, 1, 1);
 
-                        let value_text = gtk::Entry::new();
-                        value_text.set_text(value);
-                        grid.attach(&value_text, 1, n as i32, 1, 1);
+                        let value_box = gtk::EventBox::new();
+                        let value_label = gtk::Label::new(Some(value.as_str()));
+                        value_box.add(&value_label);
+                        grid.attach(&value_box, 1, n as i32, 1, 1);
                     },
                     LoginFieldKind::Checkbox | LoginFieldKind::Button => {},
                 };
             }
         }
         Detail::Generic(g) => {
+            let mut pos = 0i32;
             for s in g.sections {
-                for _f in s.fields {
-                    // Nothing yet
+                if s.name != "" && s.fields.len() != 0 {
+                    let ebox = gtk::EventBox::new();
+                    let label = gtk::Label::new(None);
+                    label.set_markup(&format!("<b>{}</b>", s.title));
+                    ebox.add(&label);
+                    grid.attach(&ebox, 0, pos, 2, 1);
+                    pos += 1;
+                }
+
+                for f in s.fields {
+                    if f.value.is_none() {
+                        continue;
+                    }
+
+                    let ebox = gtk::EventBox::new();
+                    let label = gtk::Label::new(Some(f.name.as_str()));
+                    ebox.add(&label);
+                    grid.attach(&ebox, 0, pos, 1, 1);
+
+                    let ebox = gtk::EventBox::new();
+                    let label = gtk::Label::new(Some(format!("{:?}", f.value).as_str()));
+                    ebox.add(&label);
+                    grid.attach(&ebox, 1, pos, 1, 1);
+                    pos += 1;
                 }
             }
         }
@@ -330,15 +356,17 @@ fn grid_from_details(d: Detail) -> gtk::Grid {
 }
 
 fn insert_password(grid: &gtk::Grid, n: i32, name: &str, password: String) {
-    let name_text = gtk::Entry::new();
-    name_text.set_text(name);
-    grid.attach(&name_text, 0, n as i32, 1, 1);
+    let name_box = gtk::EventBox::new();
+    let name_label = gtk::Label::new(Some(name));
+    name_box.add(&name_label);
+    grid.attach(&name_box, 0, n as i32, 1, 1);
 
     let hbox = gtk::Box::new(Orientation::Horizontal, 0);
 
     let value_text = gtk::Entry::new();
     value_text.set_text(&"sekkrit");
     value_text.set_visibility(false);
+    value_text.set_editable(false);
     hbox.add(&value_text);
 
     let copy_button = gtk::Button::new_from_icon_name("edit-copy", gtk::IconSize::Button.into());
