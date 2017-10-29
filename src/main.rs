@@ -216,7 +216,10 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
             println!("category {:?}", item.category);
             let detail = match item.detail() {
                 Ok(d) => d,
-                Err(_) => return,
+                Err(e) => {
+                    println!("{:?}", e);
+                    return
+                }
             };
             println!("overview {:?}", item.overview());
             println!("detail {:?}", detail);
