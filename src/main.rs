@@ -316,7 +316,7 @@ fn grid_from_details(d: Detail) -> gtk::Grid {
 
                         insert_password(&grid, n as i32, name, password);
                     },
-                    LoginFieldKind::Text | LoginFieldKind::I => {
+                    LoginFieldKind::Text | LoginFieldKind::I | LoginFieldKind::Email => {
                         let name = f.designation.as_ref().unwrap_or(&f.name);
                         let value = &f.value;
 
@@ -330,9 +330,12 @@ fn grid_from_details(d: Detail) -> gtk::Grid {
                         value_box.add(&value_label);
                         grid.attach(&value_box, 1, n as i32, 1, 1);
                     },
-                    LoginFieldKind::Checkbox | LoginFieldKind::Button => {},
+                    LoginFieldKind::Checkbox | LoginFieldKind::Button | LoginFieldKind::S => {},
                 };
             }
+        }
+        Detail::Password(p) => {
+            insert_password(&grid, 0, "pasword", p.password);
         }
         Detail::Generic(g) => {
             let mut pos = 0i32;
