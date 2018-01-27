@@ -331,7 +331,7 @@ fn grid_from_details(d: Detail) -> gtk::Grid {
                         value_box.add(&value_label);
                         grid.attach(&value_box, 1, n as i32, 1, 1);
                     },
-                    LoginFieldKind::Checkbox | LoginFieldKind::Button | LoginFieldKind::S => {},
+                    LoginFieldKind::Checkbox | LoginFieldKind::Button | LoginFieldKind::S | LoginFieldKind::Radio => {},
                 };
             }
         }
