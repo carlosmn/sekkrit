@@ -47,8 +47,8 @@ fn create_unlock_window() -> Window {
     window.add(&vbox);
 
     let path_input = Entry::new();
-    if let Some(vault_path) = preselected_vault {
-        path_input.set_text(&vault_path);
+    if let Some(ref vault_path) = preselected_vault {
+        path_input.set_text(vault_path);
     }
     vbox.add(&path_input);
 
@@ -75,7 +75,11 @@ fn create_unlock_window() -> Window {
     pw_input.set_input_purpose(gtk::InputPurpose::Password);
     pw_input.set_visibility(false);
     pw_input.set_activates_default(true);
+
     vbox.add(&pw_input);
+    if preselected_vault.is_some() {
+        pw_input.grab_focus();
+    }
 
     let button = Button::new_with_label("Unlock");
     button.set_can_default(true);
