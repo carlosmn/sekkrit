@@ -142,8 +142,6 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
     folder_tree.append_column(&column);
     item_model.set_sort_column_id(gtk::SortColumn::Index(1), gtk::SortType::Ascending);
 
-    let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-
     folder_model.insert_with_values(None, &[0], &[&String::from("All")]);
     for (_uuid, folder) in &vault.folders {
         let overview = if let Ok(o) = folder.overview() {
@@ -174,12 +172,31 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
         }
     });
 
+    // Entry where the user can filter down what they want to see
+    let search_entry = gtk::Entry::new();
+    search_entry.set_icon_from_icon_name(gtk::EntryIconPosition::Secondary, "system-search");
+
+    let item_model_clone = item_model.clone();
+    let filter_item_model_clone = filter_item_model.clone();
+    search_entry.connect_changed(move |entry| {
+        let text = entry.get_buffer().get_text();
+        let filter = if text.trim().is_empty() {
+            None
+        } else {
+            Some(text.trim())
+        };
+
+        filter_items_search(&item_model_clone, filter);
+        filter_item_model_clone.refilter();
+    });
+
     folder_tree.set_model(Some(&folder_model));
 
     filter_item_model.set_visible_column(3);
 
     let item_tree = gtk::TreeView::new();
     item_tree.set_headers_visible(false);
+    item_tree.set_search_column(1);
 
     let column = gtk::TreeViewColumn::new();
     let cell = gtk::CellRendererPixbuf::new();
@@ -255,8 +272,13 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
     scrolled.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
     scrolled.add_with_viewport(&item_tree);
 
+    let item_vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    item_vbox.add(&search_entry);
+    item_vbox.pack_start(&scrolled, true, true, 0);
+
+    let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     hbox.add(&folder_tree);
-    hbox.add(&scrolled);
+    hbox.add(&item_vbox);
     hbox.add(&details_scrolled);
     w.add(&hbox);
 
@@ -281,6 +303,29 @@ fn filter_items(vault: Rc<opvault::UnlockedVault>, model: &gtk::ListStore, uuid:
             } else {
                 false
             }
+        } else {
+            true
+        };
+
+        model.set_value(&iter, 3, &visible.to_value());
+        has_next = model.iter_next(&iter);
+    }
+}
+
+/// Filter down the items in the model to those which contain the given string in their name
+fn filter_items_search(model: &gtk::ListStore, text: Option<&str>) {
+    let iter = match model.get_iter_first() {
+        Some(i) => i,
+        None => return,
+    };
+
+    let lower_text = text.map(|t| t.to_lowercase());
+    let mut has_next = true;
+    while has_next {
+        let item_title = model.get_value(&iter, 1).get::<String>().unwrap();
+
+        let visible = if let Some(ref filter) = lower_text {
+            item_title.to_lowercase().contains(filter)
         } else {
             true
         };
