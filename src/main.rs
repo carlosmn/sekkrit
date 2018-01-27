@@ -136,6 +136,7 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
     column.add_attribute(&cell, "text", 0);
     folder_tree.set_headers_visible(false);
     folder_tree.append_column(&column);
+    item_model.set_sort_column_id(gtk::SortColumn::Index(1), gtk::SortType::Ascending);
 
     let hbox = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 
