@@ -74,10 +74,14 @@ fn create_unlock_window() -> Window {
     let pw_input = Entry::new();
     pw_input.set_input_purpose(gtk::InputPurpose::Password);
     pw_input.set_visibility(false);
+    pw_input.set_activates_default(true);
     vbox.add(&pw_input);
 
     let button = Button::new_with_label("Unlock");
+    button.set_can_default(true);
+
     vbox.add(&button);
+    button.grab_default();
 
     window.connect_delete_event(|_, _| {
         gtk::main_quit();
