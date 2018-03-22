@@ -134,6 +134,12 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
         Inhibit(false)
     });
 
+    let debug = match std::env::var("SEKKRIT_DEBUG") {
+        Ok(ref val) if val == "1" => true,
+        Ok(ref val) if val == "true" => true,
+        _ => false,
+    };
+
     let item_model = gtk::ListStore::new(&[String::static_type(), String::static_type(), String::static_type(), bool::static_type()]);
     let filter_item_model = gtk::TreeModelFilter::new(&item_model, None);
     let folder_model = gtk::ListStore::new(&[String::static_type(), String::static_type()]);
@@ -239,16 +245,25 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
                 None => return,
             };
 
-            println!("category {:?}", item.category);
+            if debug {
+                println!("category {:?}", item.category);
+            }
+
             let detail = match item.detail() {
                 Ok(d) => d,
                 Err(e) => {
-                    println!("{:?}", e);
+                    if debug {
+                        println!("{:?}", e);
+                    }
+
                     return
                 }
             };
-            println!("overview {:?}", item.overview());
-            println!("detail {:?}", detail);
+
+            if debug {
+                println!("overview {:?}", item.overview());
+                println!("detail {:?}", detail);
+            }
 
             for c in details_scrolled_clone.get_children() {
                 details_scrolled_clone.remove(&c);
