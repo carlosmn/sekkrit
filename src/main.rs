@@ -280,7 +280,7 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
                 style_ctx.add_provider(&css_provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
             }
 
-            details_scrolled_clone.add_with_viewport(&ebox);
+            details_scrolled_clone.add(&ebox);
             details_scrolled_clone.show_all();
         }
     });
@@ -289,7 +289,7 @@ fn create_main_window(vault: opvault::UnlockedVault) -> Window {
 
     let scrolled = gtk::ScrolledWindow::new(None, None);
     scrolled.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
-    scrolled.add_with_viewport(&item_tree);
+    scrolled.add(&item_tree);
 
     let item_vbox = gtk::Box::new(gtk::Orientation::Vertical, 0);
     item_vbox.add(&search_entry);
